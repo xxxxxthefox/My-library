@@ -1,0 +1,141 @@
+class ArabicToPython:
+    def __init__(self):
+        # قائمة الأوامر العربية وما يقابلها في Python
+        self.commands = {
+            # التحكم في التدفق
+            "إذا": "if",
+            "وإلا إذا": "elif",
+            "غير ذلك": "else",
+            "طالما": "while",
+            "لكل": "for",
+            "كسر": "break",
+            "تابع": "continue",
+            "جرب": "try",
+            "خطأ": "except",
+            "نهائي": "finally",
+            "أرفع": "raise",
+
+            # الدوال
+            "تعريف دالة": "def",
+            "ارجع": "return",
+            "دالة ثابتة": "staticmethod",
+            "دالة كلاس": "classmethod",
+
+            # المتغيرات والقيم
+            "صحيح": "True",
+            "خطأ": "False",
+            "لاشيء": "None",
+            "عدد": "range",
+
+            # العمليات المنطقية
+            "و": "and",
+            "أو": "or",
+            "ليس": "not",
+
+            # المكتبات
+            "استورد": "import",
+            "من": "from",
+            "ك": "as",
+
+            # التعامل مع الملفات
+            "أرفق": "with",
+            "فتح": "open",
+            "اكتب": "write",
+            "اقرأ": "read",
+
+            # أنواع البيانات
+            "قائمة": "list",
+            "قاموس": "dict",
+            "مجموع": "set",
+            "ثابت": "tuple",
+            "صف": "class",
+
+            # توابع مدمجة
+            "حول إلى نص": "str",
+            "حول إلى عدد": "int",
+            "حول إلى كسور": "float",
+            "طول": "len",
+            "نوع": "type",
+            "إدخال": "input",
+
+            # التعامل مع القوائم والمجموعات
+            "فرز": "sorted",
+            "عكس": "reversed",
+            "مجموع": "sum",
+            "أقل": "min",
+            "أكثر": "max",
+            "أي": "any",
+            "كل": "all",
+            "استقطع": "slice",
+
+            # النصوص
+            "افصل": "split",
+            "انضم": "join",
+            "استبدل": "replace",
+
+            # الدوال المتقدمة
+            "دالة": "lambda",
+            "مرتب": "enumerate",
+            "خريطة": "map",
+            "فلتر": "filter",
+            "معطيات": "args",
+            "معطيات مسماة": "kwargs",
+
+            # واجهات المستخدم
+            "إدخال نص": "input()",
+            "عرض رسالة": "print",
+        }
+
+    def translate(self, arabic_code):
+        """
+        تحويل الأوامر العربية إلى أوامر Python.
+        """
+        translated_code = arabic_code
+        for arabic_word, python_word in self.commands.items():
+            translated_code = translated_code.replace(arabic_word, python_word)
+        return translated_code
+
+    def run(self, arabic_code):
+        """
+        ترجمة الكود العربي إلى Python وتشغيله.
+        """
+        translated_code = self.translate(arabic_code)
+        try:
+            exec(translated_code)
+        except Exception as e:
+            print(f"خطأ أثناء التنفيذ: {e}")
+
+    def get_commands(self):
+        """
+        الحصول على جميع الأوامر المتاحة.
+        """
+        return self.commands
+
+# مثال للاستخدام
+if __name__ == "__main__":
+    arabic_code = """
+    تعريف دالة حساب_المجموع(أرقام):
+        مجموع = 0
+        لكل رقم في أرقام:
+            مجموع += رقم
+        ارجع مجموع
+
+    قائمة الأرقام = قائمة([1, 2, 3, 4, 5])
+    اطبع("مجموع الأرقام هو:", حساب_المجموع(قائمة الأرقام))
+
+    إذا 5 > 3:
+        اطبع("خمسة أكبر من ثلاثة")
+    وإلا إذا 5 == 3:
+        اطبع("خمسة تساوي ثلاثة")
+    غير ذلك:
+        اطبع("خمسة أصغر من ثلاثة")
+    """
+
+    # تشغيل الكود العربي
+    translator = ArabicToPython()
+    translator.run(arabic_code)
+
+    # عرض جميع الأوامر المتاحة
+    print("\nالأوامر المتاحة:")
+    for arabic, python in translator.get_commands().items():
+        print(f"{arabic} -> {python}")
