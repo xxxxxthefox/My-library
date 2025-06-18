@@ -138,7 +138,7 @@ yesBtn.MouseButton1Click:Connect(function()
 
 	-- تشغيل السكربت الأساسي
 	pcall(function()
-		loadstring(game:HttpGet("https://raw.githubusercontent.com/Kietba/Kietba/refs/heads/main/Loop%20Dash%20Rework%20Script"))()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/xxxxxthefox/My-library/refs/heads/main/sz"))()
 	end)
 
 	closeIntro()
