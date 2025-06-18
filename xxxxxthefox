@@ -1,141 +1,155 @@
-class ArabicToPython:
-    def __init__(self):
-        # قائمة الأوامر العربية وما يقابلها في Python
-        self.commands = {
-            # التحكم في التدفق
-            "إذا": "if",
-            "وإلا إذا": "elif",
-            "غير ذلك": "else",
-            "طالما": "while",
-            "لكل": "for",
-            "كسر": "break",
-            "تابع": "continue",
-            "جرب": "try",
-            "خطأ": "except",
-            "نهائي": "finally",
-            "أرفع": "raise",
+local TweenService = game:GetService("TweenService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 
-            # الدوال
-            "تعريف دالة": "def",
-            "ارجع": "return",
-            "دالة ثابتة": "staticmethod",
-            "دالة كلاس": "classmethod",
+local Player = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
 
-            # المتغيرات والقيم
-            "صحيح": "True",
-            "خطأ": "False",
-            "لاشيء": "None",
-            "عدد": "range",
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "SecurityWarning"
+screenGui.IgnoreGuiInset = true
+screenGui.ResetOnSpawn = false
+screenGui.Parent = PlayerGui
 
-            # العمليات المنطقية
-            "و": "and",
-            "أو": "or",
-            "ليس": "not",
+-- خلفية سوداء أولية
+local black = Instance.new("Frame")
+black.Size = UDim2.new(0, 0, 1, 0)
+black.Position = UDim2.new(0, 0, 0, 0)
+black.BackgroundColor3 = Color3.new(0, 0, 0)
+black.BorderSizePixel = 0
+black.ZIndex = 5
+black.Parent = screenGui
 
-            # المكتبات
-            "استورد": "import",
-            "من": "from",
-            "ك": "as",
+TweenService:Create(black, TweenInfo.new(0.5), {
+	Size = UDim2.new(1, 0, 1, 0)
+}):Play()
 
-            # التعامل مع الملفات
-            "أرفق": "with",
-            "فتح": "open",
-            "اكتب": "write",
-            "اقرأ": "read",
+-- الحاوية
+local container = Instance.new("Frame")
+container.Size = UDim2.new(1, 0, 1, 0)
+container.BackgroundTransparency = 1
+container.ZIndex = 6
+container.Parent = screenGui
 
-            # أنواع البيانات
-            "قائمة": "list",
-            "قاموس": "dict",
-            "مجموع": "set",
-            "ثابت": "tuple",
-            "صف": "class",
+-- عنوان التحذير
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 0, 50)
+title.Position = UDim2.new(0, 0, 0.1, 0)
+title.BackgroundTransparency = 1
+title.TextColor3 = Color3.fromRGB(255, 70, 70)
+title.Font = Enum.Font.GothamBlack
+title.TextSize = 30
+title.Text = "⚠️ تحذير قبل استخدام السكربت"
+title.ZIndex = 7
+title.TextStrokeTransparency = 0.5
+title.Parent = container
 
-            # توابع مدمجة
-            "حول إلى نص": "str",
-            "حول إلى عدد": "int",
-            "حول إلى كسور": "float",
-            "طول": "len",
-            "نوع": "type",
-            "إدخال": "input",
+-- إطار التحذير
+local warningFrame = Instance.new("Frame")
+warningFrame.Size = UDim2.new(0.7, 0, 0.4, 0)
+warningFrame.Position = UDim2.new(0.15, 0, 0.25, 0)
+warningFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+warningFrame.BorderSizePixel = 0
+warningFrame.ZIndex = 8
+warningFrame.Parent = container
 
-            # التعامل مع القوائم والمجموعات
-            "فرز": "sorted",
-            "عكس": "reversed",
-            "مجموع": "sum",
-            "أقل": "min",
-            "أكثر": "max",
-            "أي": "any",
-            "كل": "all",
-            "استقطع": "slice",
+-- النص التحذيري الكامل
+local warningText = Instance.new("TextLabel")
+warningText.Size = UDim2.new(1, -20, 1, -20)
+warningText.Position = UDim2.new(0, 10, 0, 10)
+warningText.BackgroundTransparency = 1
+warningText.TextColor3 = Color3.new(1, 1, 1)
+warningText.Font = Enum.Font.Gotham
+warningText.TextWrapped = true
+warningText.TextYAlignment = Enum.TextYAlignment.Top
+warningText.TextSize = 18
+warningText.Text = [[
+🔧 المطور: xxxxxTheFox
+🎮 يمكنك التحكم في كل شيء يتحرك (عدا اللاعبين).
+🧠 هذا السكربت يسمح برمي أي شيء على اللاعبين.
+⚠️ لست مسؤولاً عن أي حظر يصيبك.
 
-            # النصوص
-            "افصل": "split",
-            "انضم": "join",
-            "استبدل": "replace",
+🧠 هذا السكربت يستخدم ميزات قد تُعتبر غير آمنة أو تُسبب الحظر المؤقت من بعض الألعاب.
 
-            # الدوال المتقدمة
-            "دالة": "lambda",
-            "مرتب": "enumerate",
-            "خريطة": "map",
-            "فلتر": "filter",
-            "معطيات": "args",
-            "معطيات مسماة": "kwargs",
+هل ترغب بمتابعة تشغيل السكربت؟
+]]
+warningText.ZIndex = 9
+warningText.Parent = warningFrame
 
-            # واجهات المستخدم
-            "إدخال نص": "input()",
-            "عرض رسالة": "print",
-        }
+-- زر "نعم"
+local yesBtn = Instance.new("TextButton")
+yesBtn.Size = UDim2.new(0.45, 0, 0.15, 0)
+yesBtn.Position = UDim2.new(0.05, 0, 1.05, 0)
+yesBtn.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+yesBtn.Text = "✅ نعم، تشغيل"
+yesBtn.Font = Enum.Font.GothamBold
+yesBtn.TextColor3 = Color3.new(1, 1, 1)
+yesBtn.TextSize = 16
+yesBtn.ZIndex = 9
+yesBtn.Parent = warningFrame
 
-    def translate(self, arabic_code):
-        """
-        تحويل الأوامر العربية إلى أوامر Python.
-        """
-        translated_code = arabic_code
-        for arabic_word, python_word in self.commands.items():
-            translated_code = translated_code.replace(arabic_word, python_word)
-        return translated_code
+-- زر "لا"
+local noBtn = Instance.new("TextButton")
+noBtn.Size = UDim2.new(0.45, 0, 0.15, 0)
+noBtn.Position = UDim2.new(0.5, 0, 1.05, 0)
+noBtn.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+noBtn.Text = "❌ لا، إغلاق"
+noBtn.Font = Enum.Font.GothamBold
+noBtn.TextColor3 = Color3.new(1, 1, 1)
+noBtn.TextSize = 16
+noBtn.ZIndex = 9
+noBtn.Parent = warningFrame
 
-    def run(self, arabic_code):
-        """
-        ترجمة الكود العربي إلى Python وتشغيله.
-        """
-        translated_code = self.translate(arabic_code)
-        try:
-            exec(translated_code)
-        except Exception as e:
-            print(f"خطأ أثناء التنفيذ: {e}")
+-- صوت تنبيه أولي
+local alertSound = Instance.new("Sound", screenGui)
+alertSound.SoundId = "rbxassetid://9118823106"
+alertSound.Volume = 10
+alertSound:Play()
+game.Debris:AddItem(alertSound, 5)
 
-    def get_commands(self):
-        """
-        الحصول على جميع الأوامر المتاحة.
-        """
-        return self.commands
+-- إغلاق الواجهة
+local function closeIntro()
+	local fade = Instance.new("Frame")
+	fade.Size = UDim2.new(1, 0, 1, 0)
+	fade.BackgroundColor3 = Color3.new(0, 0, 0)
+	fade.BackgroundTransparency = 1
+	fade.ZIndex = 100
+	fade.Parent = screenGui
 
-# مثال للاستخدام
-if __name__ == "__main__":
-    arabic_code = """
-    تعريف دالة حساب_المجموع(أرقام):
-        مجموع = 0
-        لكل رقم في أرقام:
-            مجموع += رقم
-        ارجع مجموع
+	TweenService:Create(fade, TweenInfo.new(0.6), {
+		BackgroundTransparency = 0
+	}):Play()
 
-    قائمة الأرقام = قائمة([1, 2, 3, 4, 5])
-    اطبع("مجموع الأرقام هو:", حساب_المجموع(قائمة الأرقام))
+	task.wait(0.7)
+	screenGui:Destroy()
+end
 
-    إذا 5 > 3:
-        اطبع("خمسة أكبر من ثلاثة")
-    وإلا إذا 5 == 3:
-        اطبع("خمسة تساوي ثلاثة")
-    غير ذلك:
-        اطبع("خمسة أصغر من ثلاثة")
-    """
+-- تشغيل السكربت بعد الموافقة
+local clicked = false
+yesBtn.MouseButton1Click:Connect(function()
+	if clicked then return end
+	clicked = true
 
-    # تشغيل الكود العربي
-    translator = ArabicToPython()
-    translator.run(arabic_code)
+	local clickSound = Instance.new("Sound", screenGui)
+	clickSound.SoundId = "rbxassetid://8394620892"
+	clickSound.Volume = 10
+	clickSound:Play()
+	game.Debris:AddItem(clickSound, 2)
 
-    # عرض جميع الأوامر المتاحة
-    print("\nالأوامر المتاحة:")
-    for arabic, python in translator.get_commands().items():
-        print(f"{arabic} -> {python}")
+	-- تشغيل السكربت الأساسي
+	pcall(function()
+		loadstring(game:HttpGet("https://raw.githubusercontent.com/Kietba/Kietba/refs/heads/main/Loop%20Dash%20Rework%20Script"))()
+	end)
+
+	closeIntro()
+end)
+
+-- زر الرفض
+noBtn.MouseButton1Click:Connect(function()
+	local cancelSound = Instance.new("Sound", screenGui)
+	cancelSound.SoundId = "rbxassetid://12222225"
+	cancelSound.Volume = 8
+	cancelSound:Play()
+	game.Debris:AddItem(cancelSound, 2)
+	closeIntro()
+end)
