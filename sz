@@ -1,0 +1,245 @@
+-- Gui Bring Parts | Modified by xxxxxTheFox
+
+-- Instances:
+local Gui = Instance.new("ScreenGui")
+local Main = Instance.new("Frame")
+local Box = Instance.new("TextBox")
+local UITextSizeConstraint = Instance.new("UITextSizeConstraint")
+local Label = Instance.new("TextLabel")
+local UITextSizeConstraint_2 = Instance.new("UITextSizeConstraint")
+local Button = Instance.new("TextButton")
+local UITextSizeConstraint_3 = Instance.new("UITextSizeConstraint")
+local AllButton = Instance.new("TextButton")
+local UITextSizeConstraint_4 = Instance.new("UITextSizeConstraint")
+
+-- UI Properties:
+Gui.Name = "xxxxxTheFox_BringGui"
+Gui.Parent = gethui and gethui() or game.CoreGui
+Gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+Main.Name = "Main"
+Main.Parent = Gui
+Main.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+Main.BorderSizePixel = 0
+Main.Position = UDim2.new(0.35, 0, 0.45, 0)
+Main.Size = UDim2.new(0.25, 0, 0.3, 0)
+Main.Active = true
+Main.Draggable = true
+
+Label.Name = "Label"
+Label.Parent = Main
+Label.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+Label.BorderSizePixel = 0
+Label.Size = UDim2.new(1, 0, 0.15, 0)
+Label.Font = Enum.Font.GothamBold
+Label.Text = "رمي الأجزاء | xxxxxTheFox"
+Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+Label.TextScaled = true
+Label.TextWrapped = true
+UITextSizeConstraint_2.Parent = Label
+UITextSizeConstraint_2.MaxTextSize = 24
+
+Box.Name = "Box"
+Box.Parent = Main
+Box.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+Box.BorderSizePixel = 0
+Box.Position = UDim2.new(0.1, 0, 0.2, 0)
+Box.Size = UDim2.new(0.8, 0, 0.2, 0)
+Box.PlaceholderText = "اكتب اسم اللاعب هنا"
+Box.Font = Enum.Font.GothamSemibold
+Box.Text = ""
+Box.TextColor3 = Color3.fromRGB(255, 255, 255)
+Box.TextScaled = true
+Box.TextWrapped = true
+UITextSizeConstraint.Parent = Box
+UITextSizeConstraint.MaxTextSize = 28
+
+Button.Name = "Button"
+Button.Parent = Main
+Button.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+Button.BorderSizePixel = 0
+Button.Position = UDim2.new(0.1, 0, 0.45, 0)
+Button.Size = UDim2.new(0.8, 0, 0.2, 0)
+Button.Font = Enum.Font.Gotham
+Button.Text = "رمي عل اللاعب | إيقاف"
+Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+Button.TextScaled = true
+Button.TextWrapped = true
+UITextSizeConstraint_3.Parent = Button
+UITextSizeConstraint_3.MaxTextSize = 28
+
+AllButton.Name = "AllButton"
+AllButton.Parent = Main
+AllButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
+AllButton.BorderSizePixel = 0
+AllButton.Position = UDim2.new(0.1, 0, 0.7, 0)
+AllButton.Size = UDim2.new(0.8, 0, 0.2, 0)
+AllButton.Font = Enum.Font.Gotham
+AllButton.Text = "كل اللاعبين | إيقاف"
+AllButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+AllButton.TextScaled = true
+AllButton.TextWrapped = true
+UITextSizeConstraint_4.Parent = AllButton
+UITextSizeConstraint_4.MaxTextSize = 28
+
+-- Functional Script:
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+
+local Folder = Instance.new("Folder", Workspace)
+local Part = Instance.new("Part", Folder)
+local Attachment1 = Instance.new("Attachment", Part)
+Part.Anchored = true
+Part.CanCollide = false
+Part.Transparency = 1
+
+if not getgenv().Network then
+	getgenv().Network = {
+		BaseParts = {},
+		Velocity = Vector3.new(14.46, 14.46, 14.46)
+	}
+
+	Network.RetainPart = function(p)
+		if p:IsA("BasePart") and p:IsDescendantOf(Workspace) then
+			table.insert(Network.BaseParts, p)
+			p.CustomPhysicalProperties = PhysicalProperties.new(0, 0, 0, 0, 0)
+			p.CanCollide = false
+		end
+	end
+
+	RunService.Heartbeat:Connect(function()
+		sethiddenproperty(LocalPlayer, "SimulationRadius", math.huge)
+		for _, part in pairs(Network.BaseParts) do
+			if part:IsDescendantOf(Workspace) then
+				part.Velocity = Network.Velocity
+			end
+		end
+	end)
+end
+
+local function ForcePart(v)
+	if v:IsA("BasePart") and not v.Anchored and not v.Parent:FindFirstChildOfClass("Humanoid") and not v.Parent:FindFirstChild("Head") and v.Name ~= "Handle" then
+		for _, x in ipairs(v:GetChildren()) do
+			if x:IsA("BodyMover") or x:IsA("RocketPropulsion") then
+				x:Destroy()
+			end
+		end
+		for _, c in pairs({"Attachment", "AlignPosition", "Torque"}) do
+			local f = v:FindFirstChild(c)
+			if f then f:Destroy() end
+		end
+		v.CanCollide = false
+		local Torque = Instance.new("Torque", v)
+		Torque.Torque = Vector3.new(100000000, 100000000, 100000000)
+		local AlignPosition = Instance.new("AlignPosition", v)
+		local Attachment2 = Instance.new("Attachment", v)
+		Torque.Attachment0 = Attachment2
+		AlignPosition.MaxForce = math.huge
+		AlignPosition.MaxVelocity = math.huge
+		AlignPosition.Responsiveness = 200
+		AlignPosition.Attachment0 = Attachment2
+		AlignPosition.Attachment1 = Attachment1
+	end
+end
+
+-- Toggle UI with Right Ctrl
+local mainStatus = true
+UserInputService.InputBegan:Connect(function(input, gpe)
+	if input.KeyCode == Enum.KeyCode.RightControl and not gpe then
+		mainStatus = not mainStatus
+		Main.Visible = mainStatus
+	end
+end)
+
+local blackHoleActive = false
+local character, humanoidRootPart
+local DescendantAddedConnection
+
+function toggleBlackHole()
+	blackHoleActive = not blackHoleActive
+	if blackHoleActive then
+		Button.Text = "رمي عل اللاعب | تشغيل"
+		for _, v in ipairs(Workspace:GetDescendants()) do ForcePart(v) end
+		DescendantAddedConnection = Workspace.DescendantAdded:Connect(function(v)
+			if blackHoleActive then ForcePart(v) end
+		end)
+	else
+		Button.Text = "رمي عل اللاعب | إيقاف"
+		if DescendantAddedConnection then DescendantAddedConnection:Disconnect() end
+	end
+end
+
+local function getPlayer(name)
+	name = string.lower(name)
+	for _, p in pairs(Players:GetPlayers()) do
+		if string.find(string.lower(p.Name), name) or string.find(string.lower(p.DisplayName), name) then
+			return p
+		end
+	end
+end
+
+local player = nil
+
+Box.FocusLost:Connect(function(enterPressed)
+	if enterPressed then
+		player = getPlayer(Box.Text)
+		if player then
+			Box.Text = player.Name
+			print("تم العثور على اللاعب:", player.Name)
+		else
+			print("❌ لم يتم العثور على اللاعب")
+		end
+	end
+end)
+
+Button.MouseButton1Click:Connect(function()
+	if player then
+		character = player.Character or player.CharacterAdded:Wait()
+		humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+		toggleBlackHole()
+	else
+		print("لم يتم تحديد لاعب")
+	end
+end)
+
+local allPlayersMode = false
+
+AllButton.MouseButton1Click:Connect(function()
+	allPlayersMode = not allPlayersMode
+	if allPlayersMode then
+		AllButton.Text = "كل اللاعبين | تشغيل"
+		blackHoleActive = true
+		Button.Text = "رمي عل اللاعب | تشغيل"
+		for _, v in ipairs(Workspace:GetDescendants()) do ForcePart(v) end
+		DescendantAddedConnection = Workspace.DescendantAdded:Connect(function(v)
+			if blackHoleActive then ForcePart(v) end
+		end)
+	else
+		AllButton.Text = "كل اللاعبين | إيقاف"
+		if DescendantAddedConnection then DescendantAddedConnection:Disconnect() end
+		blackHoleActive = false
+		Button.Text = "رمي عل اللاعب | إيقاف"
+	end
+end)
+
+coroutine.wrap(function()
+	RunService.RenderStepped:Connect(function()
+		if allPlayersMode then
+			local all = Players:GetPlayers()
+			if #all > 1 then
+				local target
+				repeat
+					target = all[math.random(1, #all)]
+				until target ~= LocalPlayer and target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+
+				player = target
+				character = player.Character
+				humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+				Attachment1.WorldCFrame = humanoidRootPart.CFrame
+			end
+		end
+	end)
+end)()
