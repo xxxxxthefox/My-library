@@ -1,4 +1,4 @@
--- 🧠 الخدمات
+-- خدمات Roblox
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
@@ -7,79 +7,57 @@ local VirtualUser = game:GetService("VirtualUser")
 
 local localPlayer = Players.LocalPlayer
 local camera = Workspace.CurrentCamera
-
--- 🎯 دائرة FOV
 local FOVring
-if getgenv().settings.drawFov then
-    FOVring = Drawing.new("Circle")
-    FOVring.Thickness = 2
-    FOVring.Filled = false
-    FOVring.Color = Color3.fromRGB(255, 0, 0)
-    FOVring.Visible = true
-end
 
--- 🔒 حماية من الكشف
+-- 🛡️ حماية وهمية
 local lastProtectionCheck = tick()
 local protectionInterval = math.random(5, 10)
 local function performProtection()
-    if not getgenv().settings.enable_protection then return end
+    if not settings.enable_protection then return end
     if tick() - lastProtectionCheck >= protectionInterval then
         lastProtectionCheck = tick()
         protectionInterval = math.random(5, 10)
-        if false then
-            warn("⚠️ نشاط مشبوه - تم إيقاف الأيمبوت")
-            getgenv().settings.enable_aimbot = false
-        end
     end
 end
 
--- ✅ فحص الفريق
+-- فحص إذا كان اللاعب عدو
 local function isEnemy(player)
-    if not getgenv().settings.teamCheck then return true end
+    if not settings.teamCheck then return true end
     return player.Team == nil or localPlayer.Team == nil or player.Team ~= localPlayer.Team
 end
 
--- ✅ فحص إذا حي
+-- فحص إذا اللاعب حي
 local function isAlive(player)
     return player.Character and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0
 end
 
--- 👀 فحص الرؤية (تبع الجدران)
+-- فحص الجدران
 local function isPartVisible(part)
-    if not getgenv().settings.wallCheck then return true end
+    if not settings.wallCheck then return true end
     local origin = camera.CFrame.Position
     local direction = (part.Position - origin).Unit
     local distance = (part.Position - origin).Magnitude
-
-    local raycastParams = RaycastParams.new()
-    raycastParams.FilterDescendantsInstances = {localPlayer.Character, part.Parent}
-    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
-    raycastParams.IgnoreWater = true
-
-    local result = Workspace:Raycast(origin, direction * distance, raycastParams)
+    local params = RaycastParams.new()
+    params.FilterDescendantsInstances = {localPlayer.Character, part.Parent}
+    params.FilterType = Enum.RaycastFilterType.Blacklist
+    params.IgnoreWater = true
+    local result = Workspace:Raycast(origin, direction * distance, params)
     return not result
 end
 
--- 🔁 هل الهدف ضمن FOV؟
-local function isWithinFov(targetPosition)
-    local camPos = camera.CFrame.Position
-    local camLook = camera.CFrame.LookVector
-    local toTarget = (targetPosition - camPos).Unit
-
-    local dot = camLook:Dot(toTarget)
-    local angle = math.deg(math.acos(dot))
-
-    return angle <= (getgenv().settings.fov or 30)
+-- فحص FOV
+local function isWithinFov(pos)
+    local dir = (pos - camera.CFrame.Position).Unit
+    local angle = math.deg(math.acos(camera.CFrame.LookVector:Dot(dir)))
+    return angle <= settings.fov
 end
 
--- 🧠 إيجاد أقرب عدو مرئي
+-- أقرب هدف مرئي
 local function getClosestEnemy()
-    local closest = nil
-    local shortest = math.huge
-
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= localPlayer and isEnemy(player) and isAlive(player) then
-            local head = player.Character:FindFirstChild("Head")
+    local closest, shortest = nil, math.huge
+    for _, p in ipairs(Players:GetPlayers()) do
+        if p ~= localPlayer and isEnemy(p) and isAlive(p) then
+            local head = p.Character:FindFirstChild("Head")
             if head and isPartVisible(head) and isWithinFov(head.Position) then
                 local dist = (head.Position - localPlayer.Character.HumanoidRootPart.Position).Magnitude
                 if dist < shortest then
@@ -89,61 +67,62 @@ local function getClosestEnemy()
             end
         end
     end
-
     return closest, shortest
 end
 
--- 🔮 التنبؤ بالحركة
-local function predict(hitbox)
-    if not getgenv().settings.enable_prediction then
-        return hitbox.Position
-    end
-    return hitbox.Position + (hitbox.Velocity * getgenv().settings.predictionFactor)
+-- التنبؤ بالحركة
+local function predict(pos, vel)
+    return settings.enable_prediction and (pos + vel * settings.predictionFactor) or pos
 end
 
--- 🔫 ضربة تلقائية
+-- إطلاق تلقائي
 local function fire()
     VirtualUser:Button1Down(Vector2.new(), camera.CFrame)
     task.wait()
     VirtualUser:Button1Up(Vector2.new(), camera.CFrame)
 end
 
--- ♻️ حلقة التحديث الرئيسية
+-- تحديث دائرة FOV
+local function updateFov()
+    if settings.drawFov and settings.enable_aimbot then
+        if not FOVring then
+            FOVring = Drawing.new("Circle")
+            FOVring.Thickness = 2
+            FOVring.Filled = false
+            FOVring.Color = Color3.fromRGB(255, 0, 0)
+        end
+        FOVring.Visible = true
+        FOVring.Position = camera.ViewportSize / 2
+        FOVring.Radius = math.clamp(settings.fov * 4, 5, 1000)
+    elseif FOVring then
+        FOVring.Visible = false
+    end
+end
+
+-- التحديث المستمر
 RunService.RenderStepped:Connect(function()
     performProtection()
+    updateFov()
 
-    -- ⚪ تحديث دائرة FOV
-    if FOVring then
-        FOVring.Position = camera.ViewportSize / 2
-        FOVring.Radius = math.clamp((getgenv().settings.fov or 30) * 4, 10, 1000)
-        FOVring.Visible = getgenv().settings.enable_aimbot and getgenv().settings.drawFov
-    end
+    if not settings.enable_aimbot then return end
 
-    -- 🧠 تنفيذ التصويب
-    if not getgenv().settings.enable_aimbot then return end
-
-    local target, distance = getClosestEnemy()
+    local target, dist = getClosestEnemy()
     if target then
-        local pos = predict(target)
-        local from = camera.CFrame.Position
-        local smooth = math.clamp(1 / distance, 0.1, 0.5)
-
-        camera.CFrame = CFrame.new(from, pos):Lerp(CFrame.new(from, pos), smooth)
-
-        if getgenv().settings.enable_autoattack then
-            fire()
-        end
+        local aimPos = predict(target.Position, target.Velocity)
+        local camPos = camera.CFrame.Position
+        local smooth = math.clamp(1 / dist, 0.1, 0.5)
+        camera.CFrame = CFrame.new(camPos, aimPos):Lerp(CFrame.new(camPos, aimPos), smooth)
+        if settings.enable_autoattack then fire() end
     end
 end)
 
--- ❌ حذف دائرة FOV بزر Delete
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-    if gameProcessed then return end
-    if input.KeyCode == Enum.KeyCode.Delete and FOVring then
+-- حذف دائرة FOV بزر Delete
+UserInputService.InputBegan:Connect(function(i, gp)
+    if gp then return end
+    if i.KeyCode == Enum.KeyCode.Delete and FOVring then
         FOVring:Remove()
         FOVring = nil
     end
 end)
 
--- ✅ إشعار جاهزية
-print("[xxxxxTheFox Aimbot] ✅ تم التشغيل | FOV:", getgenv().settings.fov)
+print("[xxxxxTheFox Aimbot ✅] مكتبة الأيمبوت تعمل | إعدادات خارجية مستخدمة.")
