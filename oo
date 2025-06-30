@@ -144,3 +144,6 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
         FOVring = nil
     end
 end)
+
+-- ✅ إشعار جاهزية
+print("[xxxxxTheFox Aimbot] ✅ تم التشغيل | FOV:", getgenv().settings.fov)
