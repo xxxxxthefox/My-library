@@ -1,0 +1,116 @@
+-- 🧠 الخدمات المطلوبة
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local VirtualUser = game:GetService("VirtualUser")
+
+local localPlayer = Players.LocalPlayer
+local camera = Workspace.CurrentCamera
+
+-- 🔒 نظام الحماية ضد الكشف
+local lastProtectionCheck = tick()
+local protectionInterval = math.random(5, 10)
+local function performAdvancedProtectionCheck()
+    if not getgenv().settings.enable_protection then return end
+    if tick() - lastProtectionCheck >= protectionInterval then
+        lastProtectionCheck = tick()
+        protectionInterval = math.random(5, 10)
+        -- فحص وهمي، يمكن تطويره لاحقًا
+        if false then
+            warn("⚠️ تم كشف الأيمبوت! تم الإيقاف.")
+            getgenv().settings.enable_aimbot = false
+        end
+    end
+end
+
+-- ✅ فحص الفريق إن لزم
+local function isEnemy(player)
+    if not getgenv().settings.teamCheck then
+        return true -- تجاهل الفرق، كل اللاعبين مستهدفين
+    end
+    return player.Team == nil or localPlayer.Team == nil or player.Team ~= localPlayer.Team
+end
+
+-- ✅ التحقق من أن اللاعب حي
+local function isAlive(player)
+    return player.Character and player.Character:FindFirstChild("Humanoid") and player.Character.Humanoid.Health > 0
+end
+
+-- 👀 هل الجزء مرئي بالكاميرا (Raycast دقيق)
+local function isPartVisible(part)
+    local origin = camera.CFrame.Position
+    local direction = (part.Position - origin).Unit
+    local distance = (part.Position - origin).Magnitude
+
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = {localPlayer.Character, part.Parent}
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    raycastParams.IgnoreWater = true
+
+    local result = Workspace:Raycast(origin, direction * distance, raycastParams)
+    return not result
+end
+
+-- 📡 مجال الرؤية دائماً 360°
+local function isWithinFov(_)
+    return true
+end
+
+-- 🧲 العثور على أقرب عدو مرئي
+local function getClosestVisibleEnemy()
+    local closestHitbox = nil
+    local shortestDistance = math.huge
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= localPlayer and isEnemy(player) and isAlive(player) then
+            local head = player.Character:FindFirstChild("Head")
+            if head and isPartVisible(head) and isWithinFov(head.Position) then
+                local distance = (head.Position - localPlayer.Character.HumanoidRootPart.Position).Magnitude
+                if distance < shortestDistance then
+                    shortestDistance = distance
+                    closestHitbox = head
+                end
+            end
+        end
+    end
+
+    return closestHitbox, shortestDistance
+end
+
+-- 🧠 التنبؤ بالحركة
+local function predictMovement(hitbox)
+    if not getgenv().settings.enable_prediction then
+        return hitbox.Position
+    end
+    return hitbox.Position + (hitbox.Velocity * getgenv().settings.predictionFactor)
+end
+
+-- 🔫 محاكاة الضغط على زر إطلاق
+local function mouse1click()
+    VirtualUser:Button1Down(Vector2.new(), Workspace.CurrentCamera.CFrame)
+    task.wait()
+    VirtualUser:Button1Up(Vector2.new(), Workspace.CurrentCamera.CFrame)
+end
+
+-- 🔁 التحديث المستمر كل إطار
+RunService.RenderStepped:Connect(function()
+    performAdvancedProtectionCheck()
+
+    if not getgenv().settings.enable_aimbot then return end
+
+    local target, distance = getClosestVisibleEnemy()
+    if target then
+        local targetPosition = predictMovement(target)
+        local currentPosition = camera.CFrame.Position
+        local smoothFactor = math.clamp(1 / distance, 0.1, 0.5)
+        camera.CFrame = CFrame.new(currentPosition, targetPosition):Lerp(CFrame.new(currentPosition, targetPosition), smoothFactor)
+
+        -- ضرب تلقائي
+        if getgenv().settings.enable_autoattack then
+            mouse1click()
+        end
+    end
+end)
+
+-- 🟢 رسالة تأكيد التشغيل
+print("[xxxxxTheFox Aimbot] ✅ تم تشغيل الأيمبوت - النسخة المكتبية بدون واجهة GUI")
