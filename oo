@@ -1,129 +1,128 @@
--- 🔥 xxxxxTheFox | Aimbot المرض النهائي 🔥 بدون مفتاح
-
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 local VirtualUser = game:GetService("VirtualUser")
 
-local lp = Players.LocalPlayer
-local cam = Workspace.CurrentCamera
-local fovCircle
-local lastTarget = nil
+local localPlayer = Players.LocalPlayer
+local camera = Workspace.CurrentCamera
+local FOVring
 
--- إعدادات
-getgenv().settings = {
-    enable_aimbot = true,
-    aimbot_target_part = "Head",
-    fov = 120,
-    drawFov = true,
-    wallCheck = true,
-    teamCheck = true,
-    enable_prediction = true,
-    predictionFactor = 0.147,
-    enable_autoattack = true,
-    aim_stickiness = true,
-    enable_protection = true
-}
-
--- حماية
+-- حماية بسيطة في بداية التشغيل (تنفذ مرة واحدة)
 pcall(function()
-    if getgenv().settings.enable_protection then
-        hookfunction(math.random, function(...) return 1 end)
-        hookfunction(tick, function() return 0 end)
-    end
+	if getgenv().settings and getgenv().settings.enable_protection then
+		hookfunction(math.random, function(...) return 1 end)
+	end
 end)
 
-local function isEnemy(p)
-    return not getgenv().settings.teamCheck or p.Team ~= lp.Team
+local function isEnemy(player)
+	local settings = getgenv().settings
+	if not settings then return false end
+	return not settings.teamCheck or player.Team ~= localPlayer.Team
 end
 
-local function isAlive(p)
-    local c = p.Character
-    return c and c:FindFirstChild("Humanoid") and c.Humanoid.Health > 0
+local function isAlive(player)
+	local char = player.Character
+	return char and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0
 end
 
 local function isVisible(part)
-    if not getgenv().settings.wallCheck then return true end
-    local origin = cam.CFrame.Position
-    local dir = part.Position - origin
-    local params = RaycastParams.new()
-    params.FilterDescendantsInstances = {lp.Character, part.Parent}
-    params.FilterType = Enum.RaycastFilterType.Blacklist
-    local hit = Workspace:Raycast(origin, dir, params)
-    return not hit
+	local settings = getgenv().settings
+	if not settings then return false end
+	if not settings.wallCheck then return true end
+	local origin = camera.CFrame.Position
+	local dir = (part.Position - origin)
+	local params = RaycastParams.new()
+	params.FilterDescendantsInstances = {localPlayer.Character, part.Parent}
+	params.FilterType = Enum.RaycastFilterType.Blacklist
+	local result = Workspace:Raycast(origin, dir, params)
+	return not result
 end
 
 local function inFov(pos)
-    local screenPos, vis = cam:WorldToViewportPoint(pos)
-    if not vis then return false end
-    local center = Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2)
-    local dist = (Vector2.new(screenPos.X, screenPos.Y) - center).Magnitude
-    return dist <= math.clamp(getgenv().settings.fov * 4, 5, 2000)
-end
-
-local function getTarget()
-    local best, closest = nil, math.huge
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= lp and isEnemy(p) and isAlive(p) then
-            local part = p.Character and p.Character:FindFirstChild(getgenv().settings.aimbot_target_part)
-            if part and isVisible(part) and inFov(part.Position) then
-                local screen = cam:WorldToViewportPoint(part.Position)
-                local dist = (Vector2.new(screen.X, screen.Y) - cam.ViewportSize / 2).Magnitude
-                if dist < closest then
-                    closest = dist
-                    best = part
-                end
-            end
-        end
-    end
-    return best
+	local settings = getgenv().settings
+	if not settings then return false end
+	local screenPos, visible = camera:WorldToViewportPoint(pos)
+	if not visible then return false end
+	local dist = (Vector2.new(screenPos.X, screenPos.Y) - camera.ViewportSize / 2).Magnitude
+	return dist <= (settings.fov or 100)
 end
 
 local function predict(part)
-    local vel = part.Velocity or Vector3.zero
-    local dist = (cam.CFrame.Position - part.Position).Magnitude
-    local factor = getgenv().settings.predictionFactor * (dist / 100)
-    return getgenv().settings.enable_prediction and (part.Position + vel * factor) or part.Position
+	local settings = getgenv().settings
+	if not settings then return part.Position end
+	if settings.enable_prediction then
+		return part.Position + (part.Velocity or Vector3.zero) * (settings.predictionFactor or 0.17)
+	else
+		return part.Position
+	end
 end
 
-local function fireLoop()
-    VirtualUser:Button1Down(Vector2.zero, cam.CFrame)
-    task.wait()
-    VirtualUser:Button1Up(Vector2.zero, cam.CFrame)
+local function fire()
+	VirtualUser:Button1Down(Vector2.zero, camera.CFrame)
+	VirtualUser:Button1Up(Vector2.zero, camera.CFrame)
 end
 
-local function drawFov()
-    if getgenv().settings.drawFov then
-        if not fovCircle then
-            fovCircle = Drawing.new("Circle")
-            fovCircle.Thickness = 2
-            fovCircle.Filled = false
-            fovCircle.Color = Color3.fromRGB(255, 0, 0)
-        end
-        fovCircle.Visible = true
-        fovCircle.Position = Vector2.new(cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2)
-        fovCircle.Radius = math.clamp(getgenv().settings.fov * 4, 5, 2000)
-    elseif fovCircle then
-        fovCircle.Visible = false
-    end
+local function getClosestEnemy()
+	local settings = getgenv().settings
+	if not settings then return nil end
+	local closest, minDist = nil, math.huge
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= localPlayer and isEnemy(player) and isAlive(player) then
+			local char = player.Character
+			local targetPartName = settings.aimbot_target_part or "Head"
+			local part = char and char:FindFirstChild(targetPartName)
+			if part and isVisible(part) and inFov(part.Position) then
+				local screenPos, visible = camera:WorldToViewportPoint(part.Position)
+				if visible then
+					local dist = (Vector2.new(screenPos.X, screenPos.Y) - camera.ViewportSize / 2).Magnitude
+					if dist < minDist then
+						minDist = dist
+						closest = part
+					end
+				end
+			end
+		end
+	end
+	return closest
 end
 
-RunService.RenderStepped:Connect(function()
-    if not getgenv().settings.enable_aimbot then return end
-    drawFov()
+local function updateFov()
+	local settings = getgenv().settings
+	if not settings then return end
+	if settings.drawFov and settings.enable_aimbot then
+		if not FOVring then
+			FOVring = Drawing.new("Circle")
+			FOVring.Thickness = 2
+			FOVring.Filled = false
+			FOVring.Color = Color3.fromRGB(0, 255, 0)
+		end
+		FOVring.Visible = true
+		FOVring.Position = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+		FOVring.Radius = settings.fov or 100
+	elseif FOVring then
+		FOVring.Visible = false
+	end
+end
 
-    local target = getTarget()
-    if getgenv().settings.aim_stickiness and lastTarget and isAlive(lastTarget.Parent) then
-        target = lastTarget
-    else
-        lastTarget = target
-    end
+RunService.Heartbeat:Connect(function()
+	local settings = getgenv().settings
+	if not settings or not settings.enable_aimbot then
+		if FOVring then
+			FOVring.Visible = false
+		end
+		return
+	end
 
-    if target then
-        local aimPos = predict(target)
-        cam.CFrame = CFrame.new(cam.CFrame.Position, aimPos)
-        if getgenv().settings.enable_autoattack then fireLoop() end
-    end
+	updateFov()
+
+	local target = getClosestEnemy()
+	if target then
+		local aim = predict(target)
+		camera.CFrame = CFrame.lookAt(camera.CFrame.Position, aim)
+		if settings.enable_autoattack then
+			fire()
+		end
+	end
 end)
 
-print("✅ Aimbot المرض النهائي تم تفعيله | بدون مفتاح حذف 💀")
+print("[xxxxxTheFox Aimbot] ✅ يعمل بإعدادات خارجية مع تحديث فوري لكل فريم!")
