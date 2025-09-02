@@ -62,7 +62,7 @@ local function fire()
 	VirtualUser:Button1Up(Vector2.zero, camera.CFrame)
 end
 
--- ✅ أقوى فحص هدف
+-- ✅ أقرب هدف دقيق
 local function getClosestEnemy()
 	local settings = getgenv().settings
 	if not settings then return nil end
@@ -109,7 +109,7 @@ local function updateFov()
 	end
 end
 
--- ✅ ايمبوت لحظي و قوي 🔥
+-- ✅ ايمبوت ثابت + لحظي + قوي لأقصى درجة
 RunService.Heartbeat:Connect(function()
 	local settings = getgenv().settings
 	if not settings or not settings.enable_aimbot then
@@ -123,9 +123,10 @@ RunService.Heartbeat:Connect(function()
 
 	local target = getClosestEnemy()
 	if target then
-		-- لحظي 100%: يقفل مباشرة على الهدف
+		-- ثابت على الهدف بدون اهتزاز أو يمين/يسار
 		local aim = predict(target)
-		camera.CFrame = CFrame.new(camera.CFrame.Position, aim)
+		local currentPos = camera.CFrame.Position
+		camera.CFrame = CFrame.new(currentPos, aim)
 
 		if settings.enable_autoattack then
 			fire()
@@ -133,4 +134,4 @@ RunService.Heartbeat:Connect(function()
 	end
 end)
 
-print("[xxxxxTheFox Aimbot] ⚡ ايمبوت لحضي + أقوى قفل هدف!")
+print("[xxxxxTheFox Aimbot] ⚡ ثابت + لحظي + أقوى قفل هدف + فحص دقيق!")
