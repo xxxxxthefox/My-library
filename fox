@@ -1,0 +1,136 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local VirtualUser = game:GetService("VirtualUser")
+
+local localPlayer = Players.LocalPlayer
+local camera = Workspace.CurrentCamera
+local FOVring
+
+-- حماية بسيطة
+pcall(function()
+	if getgenv().settings and getgenv().settings.enable_protection then
+		hookfunction(math.random, function(...) return 1 end)
+	end
+end)
+
+local function isEnemy(player)
+	local settings = getgenv().settings
+	if not settings then return false end
+	return not settings.teamCheck or player.Team ~= localPlayer.Team
+end
+
+local function isAlive(player)
+	local char = player.Character
+	return char and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0
+end
+
+local function isVisible(part)
+	local settings = getgenv().settings
+	if not settings then return false end
+	if not settings.wallCheck then return true end
+	local origin = camera.CFrame.Position
+	local dir = (part.Position - origin)
+	local params = RaycastParams.new()
+	params.FilterDescendantsInstances = {localPlayer.Character, part.Parent}
+	params.FilterType = Enum.RaycastFilterType.Blacklist
+	local result = Workspace:Raycast(origin, dir, params)
+	return not result
+end
+
+local function inFov(pos)
+	local settings = getgenv().settings
+	if not settings then return false end
+	local screenPos, visible = camera:WorldToViewportPoint(pos)
+	if not visible then return false end
+	local dist = (Vector2.new(screenPos.X, screenPos.Y) - camera.ViewportSize / 2).Magnitude
+	return dist <= (settings.fov or 100)
+end
+
+local function predict(part)
+	local settings = getgenv().settings
+	if not settings then return part.Position end
+	if settings.enable_prediction then
+		return part.Position + (part.Velocity or Vector3.zero) * (settings.predictionFactor or 0.2)
+	else
+		return part.Position
+	end
+end
+
+local function fire()
+	VirtualUser:Button1Down(Vector2.zero, camera.CFrame)
+	VirtualUser:Button1Up(Vector2.zero, camera.CFrame)
+end
+
+-- ✅ أقوى فحص هدف
+local function getClosestEnemy()
+	local settings = getgenv().settings
+	if not settings then return nil end
+
+	local closest, minScreenDist, minWorldDist = nil, math.huge, math.huge
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= localPlayer and isEnemy(player) and isAlive(player) then
+			local char = player.Character
+			local targetPartName = settings.aimbot_target_part or "Head"
+			local part = char and char:FindFirstChild(targetPartName)
+			if part and isVisible(part) and inFov(part.Position) then
+				local screenPos, visible = camera:WorldToViewportPoint(part.Position)
+				if visible then
+					local screenDist = (Vector2.new(screenPos.X, screenPos.Y) - camera.ViewportSize / 2).Magnitude
+					local worldDist = (camera.CFrame.Position - part.Position).Magnitude
+
+					if screenDist < minScreenDist or (screenDist == minScreenDist and worldDist < minWorldDist) then
+						minScreenDist = screenDist
+						minWorldDist = worldDist
+						closest = part
+					end
+				end
+			end
+		end
+	end
+	return closest
+end
+
+local function updateFov()
+	local settings = getgenv().settings
+	if not settings then return end
+	if settings.drawFov and settings.enable_aimbot then
+		if not FOVring then
+			FOVring = Drawing.new("Circle")
+			FOVring.Thickness = 2
+			FOVring.Filled = false
+			FOVring.Color = Color3.fromRGB(255, 0, 0)
+		end
+		FOVring.Visible = true
+		FOVring.Position = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+		FOVring.Radius = settings.fov or 100
+	elseif FOVring then
+		FOVring.Visible = false
+	end
+end
+
+-- ✅ ايمبوت لحظي و قوي 🔥
+RunService.Heartbeat:Connect(function()
+	local settings = getgenv().settings
+	if not settings or not settings.enable_aimbot then
+		if FOVring then
+			FOVring.Visible = false
+		end
+		return
+	end
+
+	updateFov()
+
+	local target = getClosestEnemy()
+	if target then
+		-- لحظي 100%: يقفل مباشرة على الهدف
+		local aim = predict(target)
+		camera.CFrame = CFrame.new(camera.CFrame.Position, aim)
+
+		if settings.enable_autoattack then
+			fire()
+		end
+	end
+end)
+
+print("[xxxxxTheFox Aimbot] ⚡ ايمبوت لحضي + أقوى قفل هدف!")
