@@ -1,0 +1,236 @@
+-- xxxxxTheFox Aimbot (Fixed-camera extreme lock + your predictMovement, predictionFactor=0.1)
+-- ملاحظة: بعض الألعاب تمنع تغيير نوع الكاميرا أو قد تكشف هذا السلوك. استخدم بحذر.
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local VirtualUser = game:GetService("VirtualUser")
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+
+-- إعدادات افتراضية محدّثة حسب طلبك
+if not getgenv().settings then
+	getgenv().settings = {
+		enable_aimbot = true,
+		enable_autoattack = false,
+		aimbot_target_part = "Head",
+		teamCheck = true,
+		wallCheck = true,
+		fov = 120,
+		drawFov = true,
+		-- طلبت توجيه كاميرا ثابت "سكل مختل عقلياً" => نستخدم فوري وثابت
+		smoothness = 1,               -- 1 = فوري (ثابت)
+		enable_prediction = true,
+		predictionFactor = 0.1,       -- طلبت 0.1
+		useScriptableCamera = true,
+		aimHoldTime = 0.14,
+		minDistanceToLock = 0,
+		priority_parts = {"Head","Neck","UpperTorso","HumanoidRootPart"},
+	}
+end
+
+-- تعريف المتغير العالمي كما في مكتبتك
+predictionFactor = getgenv().settings and getgenv().settings.predictionFactor or 0.1
+
+-- حماية بسيطة مرة واحدة (اختياري)
+pcall(function()
+	if getgenv().settings and getgenv().settings.enable_protection then
+		hookfunction(math.random, function(...) return 1 end)
+	end
+end)
+
+-- دالتك كما طلبت (لم تُغير)
+local function predictMovement(hitbox)
+    local velocity = hitbox.Velocity
+    local predictedPosition = hitbox.Position + (velocity * predictionFactor)
+    return predictedPosition
+end
+
+-- باقي السكربت مع تعديل لتثبيت موقع الكاميرا أثناء التصويب
+local FOVring = nil
+local lastAimTime = 0
+local originalCameraType = Camera.CameraType
+local originalCameraSubject = Camera.CameraSubject
+local aimingLocked = false
+local lockedCameraPosition = nil -- موقع الكاميرا الثابت أثناء aim
+
+local function isEnemy(p)
+	if not p or p == LocalPlayer then return false end
+	if not getgenv().settings then return true end
+	if not getgenv().settings.teamCheck then return true end
+	if not LocalPlayer.Team or not p.Team then return true end
+	return p.Team ~= LocalPlayer.Team
+end
+
+local function isAlive(p)
+	local c = p.Character
+	local h = c and c:FindFirstChild("Humanoid")
+	return h and h.Health > 0
+end
+
+local function rayBlocked(origin, targetPart)
+	local params = RaycastParams.new()
+	params.FilterDescendantsInstances = {LocalPlayer.Character, targetPart.Parent}
+	params.FilterType = Enum.RaycastFilterType.Blacklist
+	local dir = (targetPart.Position - origin)
+	local res = Workspace:Raycast(origin, dir, params)
+	return res ~= nil
+end
+
+local function isVisible(part)
+	local s = getgenv().settings
+	if not s then return false end
+	if not s.wallCheck then return true end
+	return not rayBlocked(Camera.CFrame.Position, part)
+end
+
+local function inFov(pos)
+	local s = getgenv().settings
+	if not s then return false end
+	local screenPos, visible = Camera:WorldToViewportPoint(pos)
+	if not visible then return false end
+	local dist = (Vector2.new(screenPos.X, screenPos.Y) - Camera.ViewportSize/2).Magnitude
+	return dist <= (s.fov or 100)
+end
+
+local function getClosestEnemyPart()
+	local s = getgenv().settings
+	if not s then return nil end
+	local closestPart = nil
+	local minDist = math.huge
+	for _, p in ipairs(Players:GetPlayers()) do
+		if p ~= LocalPlayer and isEnemy(p) and isAlive(p) then
+			local char = p.Character
+			if char then
+				for _, partName in ipairs(s.priority_parts) do
+					local part = char:FindFirstChild(partName)
+					if part and inFov(part.Position) and isVisible(part) then
+						local screenPos, visible = Camera:WorldToViewportPoint(part.Position)
+						if visible then
+							local dist = (Vector2.new(screenPos.X, screenPos.Y) - Camera.ViewportSize/2).Magnitude
+							if dist < minDist then
+								minDist = dist
+								closestPart = part
+							end
+						end
+						break
+					end
+				end
+			end
+		end
+	end
+	return closestPart
+end
+
+local function updateFov()
+	local s = getgenv().settings
+	if not s then
+		if FOVring then FOVring.Visible = false end
+		return
+	end
+	if s.drawFov and s.enable_aimbot then
+		if not FOVring then
+			FOVring = Drawing.new("Circle")
+			FOVring.Thickness = 2
+			FOVring.Filled = false
+			FOVring.NumSides = 64
+			FOVring.Color = Color3.fromRGB(0,255,0)
+		end
+		FOVring.Visible = true
+		FOVring.Position = Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)
+		FOVring.Radius = s.fov or 100
+	else
+		if FOVring then FOVring.Visible = false end
+	end
+end
+
+local function enterAimingCamera()
+	if not getgenv().settings.useScriptableCamera then return end
+	if aimingLocked then return end
+	aimingLocked = true
+	pcall(function()
+		originalCameraType = Camera.CameraType
+		originalCameraSubject = Camera.CameraSubject
+		-- خزّن موقع الكاميرا الحالي ثم اجعلها Scriptable
+		lockedCameraPosition = Camera.CFrame.Position
+		Camera.CameraType = Enum.CameraType.Scriptable
+	end)
+end
+
+local function exitAimingCamera()
+	if not getgenv().settings.useScriptableCamera then return end
+	if not aimingLocked then return end
+	aimingLocked = false
+	pcall(function()
+		Camera.CameraType = originalCameraType or Enum.CameraType.Custom
+		-- إعادة الـSubject الأصلي
+		if originalCameraSubject then
+			Camera.CameraSubject = originalCameraSubject
+		else
+			local c = LocalPlayer.Character
+			if c and c:FindFirstChild("Humanoid") then
+				Camera.CameraSubject = c:FindFirstChild("Humanoid")
+			end
+		end
+		lockedCameraPosition = nil
+	end)
+end
+
+local function fire()
+	pcall(function()
+		VirtualUser:Button1Down(Vector2.new(0,0), Camera.CFrame)
+		wait(0.01)
+		VirtualUser:Button1Up(Vector2.new(0,0), Camera.CFrame)
+	end)
+end
+
+-- الحلقة الرئيسية: كل Heartbeat نثبت الكاميرا في lockedCameraPosition ونوجهها مباشرة نحو الهدف
+RunService.Heartbeat:Connect(function(deltaTime)
+	local s = getgenv().settings
+	if not s or not s.enable_aimbot then
+		updateFov()
+		exitAimingCamera()
+		return
+	end
+
+	updateFov()
+
+	local targetPart = getClosestEnemyPart()
+	local now = tick()
+
+	if targetPart then
+		if s.minDistanceToLock > 0 then
+			local d = (targetPart.Position - Camera.CFrame.Position).Magnitude
+			if d < s.minDistanceToLock then
+				targetPart = nil
+			end
+		end
+	end
+
+	if targetPart then
+		lastAimTime = now
+		enterAimingCamera()
+
+		-- استدعاء دالتك predictMovement
+		local aimPos = predictMovement(targetPart)
+
+		-- هنا: إذا لدينا lockedCameraPosition نخزن موضع ثابت للكاميرا ونستخدمه دائماً
+		local camPos = lockedCameraPosition or Camera.CFrame.Position
+
+		-- توجيه فوري وثابت نحو النقطة المتوقعة (لا Lerp لأنك طلبت ثبات شديد)
+		local desiredCFrame = CFrame.lookAt(camPos, aimPos)
+		Camera.CFrame = desiredCFrame
+
+		if s.enable_autoattack then
+			fire()
+		end
+	else
+		if now - lastAimTime <= (getgenv().settings.aimHoldTime or 0.12) then
+			-- احتفظ بالتوجيه لفترة قصيرة
+		else
+			exitAimingCamera()
+		end
+	end
+end)
+
+print("[xxxxxTheFox Aimbot] ✅ مُحدّث: predictionFactor=0.1 وكاميرا مُثبتة بشكل متطرف (locked position).")
