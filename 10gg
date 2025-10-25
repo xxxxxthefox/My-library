@@ -1,5 +1,5 @@
--- xxxxxTheFox Aimbot (Phone-friendly: no key bindings, instant-per-frame aim)
--- ملاحظة: لا يوجد أي ربط بمفاتيح أو HoldKey — مناسب للاستخدام على الهواتف.
+-- xxxxxTheFox Aimbot (Instant per-frame RenderStepped aim, accuracy=0, predictionFactor=0.1)
+-- ملاحظة: التحديث يستخدم RenderStepped لتحديث كل إطار عرض (أسرع من Heartbeat).
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -8,10 +8,10 @@ local VirtualUser = game:GetService("VirtualUser")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
--- إعدادات افتراضية محدّثة (يمكن تعديل getgenv().settings مباشرة)
+-- إعدادات افتراضية محدّثة حسب طلبك
 if not getgenv().settings then
 	getgenv().settings = {
-		enable_aimbot = true,           -- تفعيل/إيقاف من خلال هذه القيمة فقط
+		enable_aimbot = true,           -- تشغيل/إيقاف
 		enable_autoattack = false,
 		aimbot_target_part = "Head",
 		teamCheck = true,
@@ -19,11 +19,12 @@ if not getgenv().settings then
 		fov = 120,
 		drawFov = true,
 		enable_prediction = true,
-		predictionFactor = 0.1,         -- كما طلبت
+		predictionFactor = 0.1,         -- كما طلبت سابقًا
 		useScriptableCamera = true,
-		aimHoldTime = 0.14,
+		aimHoldTime = 0,                -- صفر = لا انتظار
 		minDistanceToLock = 0,
 		priority_parts = {"Head","Neck","UpperTorso","HumanoidRootPart"},
+		accuracy = 0,                   -- 0 = تصويب مثالي (بدون انحراف)
 	}
 end
 
@@ -44,7 +45,7 @@ local function predictMovement(hitbox)
     return predictedPosition
 end
 
--- باقي السكربت (بدون أي مفاتيح)
+-- باقي السكربت مع تثبيت موقع الكاميرا أثناء التصويب وتحديث كل إطار عرض (RenderStepped)
 local FOVring = nil
 local lastAimTime = 0
 local originalCameraType = Camera.CameraType
@@ -182,8 +183,8 @@ local function fire()
 	end)
 end
 
--- الحلقة الرئيسية: كل Heartbeat نثبت الكاميرا في lockedCameraPosition ونوجهها فورياً نحو الهدف (بدون أي مفاتيح)
-RunService.Heartbeat:Connect(function(deltaTime)
+-- تحديث كل إطار عرض (RenderStepped) لتصويب فوري وسريع جداً
+RunService.RenderStepped:Connect(function(deltaTime)
 	local s = getgenv().settings
 	if not s or not s.enable_aimbot then
 		updateFov()
@@ -212,6 +213,17 @@ RunService.Heartbeat:Connect(function(deltaTime)
 		-- استدعاء دالتك predictMovement
 		local aimPos = predictMovement(targetPart)
 
+		-- تطبيـق الـ accuracy: 0 => لا انحراف (تماماً كما طلبت)
+		local acc = s.accuracy or 0
+		if acc and acc > 0 then
+			-- نضيف انحراف عشوائي نسبياً لحجم الهدف (إذا أردت لاحقًا)
+			local sizeEstimate = (targetPart.Size and (targetPart.Size.Magnitude)) or 1
+			local rx = (math.random() - 0.5) * sizeEstimate * acc
+			local ry = (math.random() - 0.5) * sizeEstimate * acc
+			local rz = (math.random() - 0.5) * sizeEstimate * acc
+			aimPos = aimPos + Vector3.new(rx, ry, rz)
+		end
+
 		-- استخدم الموضع الثابت للكاميرا إذا موجود، وإلا استخدم الموضع الحالي
 		local camPos = lockedCameraPosition or Camera.CFrame.Position
 
@@ -223,12 +235,12 @@ RunService.Heartbeat:Connect(function(deltaTime)
 			fire()
 		end
 	else
-		if now - lastAimTime <= (getgenv().settings.aimHoldTime or 0.12) then
-			-- احتفظ بالتوجيه لفترة قصيرة
+		if now - lastAimTime <= (getgenv().settings.aimHoldTime or 0) then
+			-- احتفظ بالتوجيه فورياً (لا انتظار لأن aimHoldTime = 0)
 		else
 			exitAimingCamera()
 		end
 	end
 end)
 
-print("[xxxxxTheFox Aimbot] ✅ محدث: لا مفاتيح نهائياً — مناسب للاستخدام على الهواتف.")
+print("[xxxxxTheFox Aimbot] ✅ مُحدّث: دقة = 0، تحديث على RenderStepped (فوري/سريع جداً)، predictionFactor=0.1.")
