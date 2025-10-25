@@ -1,5 +1,5 @@
--- xxxxxTheFox Aimbot (Fixed-camera extreme lock + your predictMovement, predictionFactor=0.1)
--- ملاحظة: بعض الألعاب تمنع تغيير نوع الكاميرا أو قد تكشف هذا السلوك. استخدم بحذر.
+-- xxxxxTheFox Aimbot (Phone-friendly: no key bindings, instant-per-frame aim)
+-- ملاحظة: لا يوجد أي ربط بمفاتيح أو HoldKey — مناسب للاستخدام على الهواتف.
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -8,20 +8,18 @@ local VirtualUser = game:GetService("VirtualUser")
 local LocalPlayer = Players.LocalPlayer
 local Camera = Workspace.CurrentCamera
 
--- إعدادات افتراضية محدّثة حسب طلبك
+-- إعدادات افتراضية محدّثة (يمكن تعديل getgenv().settings مباشرة)
 if not getgenv().settings then
 	getgenv().settings = {
-		enable_aimbot = true,
+		enable_aimbot = true,           -- تفعيل/إيقاف من خلال هذه القيمة فقط
 		enable_autoattack = false,
 		aimbot_target_part = "Head",
 		teamCheck = true,
 		wallCheck = true,
 		fov = 120,
 		drawFov = true,
-		-- طلبت توجيه كاميرا ثابت "سكل مختل عقلياً" => نستخدم فوري وثابت
-		smoothness = 1,               -- 1 = فوري (ثابت)
 		enable_prediction = true,
-		predictionFactor = 0.1,       -- طلبت 0.1
+		predictionFactor = 0.1,         -- كما طلبت
 		useScriptableCamera = true,
 		aimHoldTime = 0.14,
 		minDistanceToLock = 0,
@@ -39,14 +37,14 @@ pcall(function()
 	end
 end)
 
--- دالتك كما طلبت (لم تُغير)
+-- دالتك كما طلبت (لم تُعدّل)
 local function predictMovement(hitbox)
     local velocity = hitbox.Velocity
     local predictedPosition = hitbox.Position + (velocity * predictionFactor)
     return predictedPosition
 end
 
--- باقي السكربت مع تعديل لتثبيت موقع الكاميرا أثناء التصويب
+-- باقي السكربت (بدون أي مفاتيح)
 local FOVring = nil
 local lastAimTime = 0
 local originalCameraType = Camera.CameraType
@@ -184,7 +182,7 @@ local function fire()
 	end)
 end
 
--- الحلقة الرئيسية: كل Heartbeat نثبت الكاميرا في lockedCameraPosition ونوجهها مباشرة نحو الهدف
+-- الحلقة الرئيسية: كل Heartbeat نثبت الكاميرا في lockedCameraPosition ونوجهها فورياً نحو الهدف (بدون أي مفاتيح)
 RunService.Heartbeat:Connect(function(deltaTime)
 	local s = getgenv().settings
 	if not s or not s.enable_aimbot then
@@ -214,10 +212,10 @@ RunService.Heartbeat:Connect(function(deltaTime)
 		-- استدعاء دالتك predictMovement
 		local aimPos = predictMovement(targetPart)
 
-		-- هنا: إذا لدينا lockedCameraPosition نخزن موضع ثابت للكاميرا ونستخدمه دائماً
+		-- استخدم الموضع الثابت للكاميرا إذا موجود، وإلا استخدم الموضع الحالي
 		local camPos = lockedCameraPosition or Camera.CFrame.Position
 
-		-- توجيه فوري وثابت نحو النقطة المتوقعة (لا Lerp لأنك طلبت ثبات شديد)
+		-- توجيه فوري: تعيين CFrame مباشرة (بدون Lerp)
 		local desiredCFrame = CFrame.lookAt(camPos, aimPos)
 		Camera.CFrame = desiredCFrame
 
@@ -233,4 +231,4 @@ RunService.Heartbeat:Connect(function(deltaTime)
 	end
 end)
 
-print("[xxxxxTheFox Aimbot] ✅ مُحدّث: predictionFactor=0.1 وكاميرا مُثبتة بشكل متطرف (locked position).")
+print("[xxxxxTheFox Aimbot] ✅ محدث: لا مفاتيح نهائياً — مناسب للاستخدام على الهواتف.")
