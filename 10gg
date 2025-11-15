@@ -7,69 +7,82 @@ local localPlayer = Players.LocalPlayer
 local camera = Workspace.CurrentCamera
 local FOVring
 
--- ثبات مريض وقوي (إجباري)
-local AIM_LOCK_STRENGTH = 999999999  -- قوة توزيع الكاميرا على الهدف (مهولة)
+-- حماية بسيطة
+pcall(function()
+	if getgenv().settings and getgenv().settings.enable_protection then
+		hookfunction(math.random, function(...) return 1 end)
+	end
+end)
 
--- فحص العدو
+---------------------------------------------------------------------
+--  فحوصات (نفس سكربتك) + دمج الثبات المريض
+---------------------------------------------------------------------
+
 local function isEnemy(player)
-	local s = getgenv().settings
-	if not s then return false end
-	return not s.teamCheck or player.Team ~= localPlayer.Team
+	local settings = getgenv().settings
+	if not settings then return false end
+	return not settings.teamCheck or player.Team ~= localPlayer.Team
 end
 
--- فحص الحياة
 local function isAlive(player)
-	local c = player.Character
-	return c and c:FindFirstChild("Humanoid") and c.Humanoid.Health > 0
+	local char = player.Character
+	return char and char:FindFirstChild("Humanoid") and char.Humanoid.Health > 0
 end
 
--- فحص الرؤية
 local function isVisible(part)
-	local s = getgenv().settings
-	if not s then return false end
-	if not s.wallCheck then return true end
+	local settings = getgenv().settings
+	if not settings then return false end
+	if not settings.wallCheck then return true end
 	local origin = camera.CFrame.Position
-	local dir = part.Position - origin
+	local dir = (part.Position - origin)
 	local params = RaycastParams.new()
-	params.FilterDescendantsInstances = {localPlayer.Character}
+	params.FilterDescendantsInstances = {localPlayer.Character, part.Parent}
 	params.FilterType = Enum.RaycastFilterType.Blacklist
 	local result = Workspace:Raycast(origin, dir, params)
 	return not result
 end
 
--- داخل الفوف
 local function inFov(pos)
-	local s = getgenv().settings
-	if not s then return false end
-	local screenPos, vis = camera:WorldToViewportPoint(pos)
-	if not vis then return false end
-	local dist = (Vector2.new(screenPos.X, screenPos.Y) - camera.ViewportSize/2).Magnitude
-	return dist <= (s.fov or 100)
+	local settings = getgenv().settings
+	if not settings then return false end
+	local screenPos, visible = camera:WorldToViewportPoint(pos)
+	if not visible then return false end
+	local dist = (Vector2.new(screenPos.X, screenPos.Y) - camera.ViewportSize / 2).Magnitude
+	return dist <= (settings.fov or 100)
 end
 
--- تنبؤ شديد (ثبات مريض)
 local function predict(part)
-	local s = getgenv().settings
-	if not s then return part.Position end
-	if s.enable_prediction then
-		return part.Position + (part.Velocity or Vector3.zero) * (s.predictionFactor or 0.20)
+	local settings = getgenv().settings
+	if not settings then return part.Position end
+	if settings.enable_prediction then
+		return part.Position + (part.Velocity or Vector3.zero) * (settings.predictionFactor or 0.20)
+	else
+		return part.Position
 	end
-	return part.Position
 end
 
--- أقرب عدو
+local function fire()
+	VirtualUser:Button1Down(Vector2.zero, camera.CFrame)
+	VirtualUser:Button1Up(Vector2.zero, camera.CFrame)
+end
+
+---------------------------------------------------------------------
+--  الحصول على أقرب هدف (بدون تغيير)
+---------------------------------------------------------------------
+
 local function getClosestEnemy()
-	local s = getgenv().settings
-	if not s then return nil end
+	local settings = getgenv().settings
+	if not settings then return nil end
 	local closest, minDist = nil, math.huge
-	for _, p in ipairs(Players:GetPlayers()) do
-		if p ~= localPlayer and isEnemy(p) and isAlive(p) then
-			local char = p.Character
-			local part = char and char:FindFirstChild(s.aimbot_target_part or "Head")
+	for _, player in ipairs(Players:GetPlayers()) do
+		if player ~= localPlayer and isEnemy(player) and isAlive(player) then
+			local char = player.Character
+			local targetPartName = settings.aimbot_target_part or "Head"
+			local part = char and char:FindFirstChild(targetPartName)
 			if part and isVisible(part) and inFov(part.Position) then
 				local screenPos, visible = camera:WorldToViewportPoint(part.Position)
 				if visible then
-					local dist = (Vector2.new(screenPos.X, screenPos.Y) - camera.ViewportSize/2).Magnitude
+					local dist = (Vector2.new(screenPos.X, screenPos.Y) - camera.ViewportSize / 2).Magnitude
 					if dist < minDist then
 						minDist = dist
 						closest = part
@@ -81,28 +94,56 @@ local function getClosestEnemy()
 	return closest
 end
 
--- 🔥🔥 ثبات شديد — بدون سموث — بدون اهتزاز — التصاق قوي
+---------------------------------------------------------------------
+--  دائرة FOV (كما هي)
+---------------------------------------------------------------------
+
+local function updateFov()
+	local settings = getgenv().settings
+	if not settings then return end
+	if settings.drawFov and settings.enable_aimbot then
+		if not FOVring then
+			FOVring = Drawing.new("Circle")
+			FOVring.Thickness = 2
+			FOVring.Filled = false
+			FOVring.Color = Color3.fromRGB(0, 255, 0)
+		end
+		FOVring.Visible = true
+		FOVring.Position = Vector2.new(camera.ViewportSize.X / 2, camera.ViewportSize.Y / 2)
+		FOVring.Radius = settings.fov or 100
+	elseif FOVring then
+		FOVring.Visible = false
+	end
+end
+
+---------------------------------------------------------------------
+--  ❤️🔥 النسخة المدموجة مع الثبات المريض (AimLock ثابت 100%)
+---------------------------------------------------------------------
+
 RunService.Heartbeat:Connect(function()
-	local s = getgenv().settings
-	if not s or not s.enable_aimbot then return end
+	local settings = getgenv().settings
+	if not settings or not settings.enable_aimbot then
+		if FOVring then FOVring.Visible = false end
+		return
+	end
+
+	updateFov()
 
 	local target = getClosestEnemy()
 	if target then
 		local aim = predict(target)
 
-		-- 🔥🔥🔥 الثبات المريض:
-		-- استخدام CFrame.lookAt بقوة مضاعفة (كاميرا تلصق بالهدف لزقة مجنونة)
+		-- 🔥🔥🔥 تثبيت غريب + قاسي + مريض
 		local camPos = camera.CFrame.Position
 		local locked = CFrame.lookAt(camPos, aim)
 
-		-- حقن الثبات بدون سموث:
-		camera.CFrame = camera.CFrame:Lerp(locked, 1) -- 1 = بدون مزح، بدون انزلاق، بدون رحمة
+		-- 1 = بدون سموث، بدون تأخير، التصاق مباشر
+		camera.CFrame = camera.CFrame:Lerp(locked, 1)
 
-		if s.enable_autoattack then
-			VirtualUser:Button1Down(Vector2.zero, camera.CFrame)
-			VirtualUser:Button1Up(Vector2.zero, camera.CFrame)
+		if settings.enable_autoattack then
+			fire()
 		end
 	end
 end)
 
-print("[xxxxxTheFox | Aimbot] 🔥 تم تفعيل الثبات المَرَضي!!")
+print("[xxxxxTheFox Aimbot] 🔥 تم الدمج — الثبات المريض جاهز!")
